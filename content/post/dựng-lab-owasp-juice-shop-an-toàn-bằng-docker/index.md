@@ -9,7 +9,7 @@ tags:
   - OWASP Top 10
   - Docker
 image: pasted-image-1791126534938.png
-draft: true
+draft: false
 ---
 
 Mình bắt đầu loạt bài về \*\*OWASP Top 10\*\* bằng việc dựng một môi trường để thực hành. 
