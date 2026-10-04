@@ -1,0 +1,27 @@
+backend:
+  name: github
+  repo: longdhhhe161316/secblog
+  branch: master
+
+media_folder: ""
+public_folder: ""
+
+collections:
+  - name: post
+    label: Bài viết
+    folder: content/post
+    path: "{{slug}}/index"
+    media_folder: ""
+    public_folder: ""
+    create: true
+    extension: md
+    format: frontmatter
+    fields:
+      - { label: Tiêu đề, name: title, widget: string }
+      - { label: Mô tả, name: description, widget: text, required: false }
+      - { label: Ngày đăng, name: date, widget: datetime }
+      - { label: Danh mục, name: categories, widget: list, required: false }
+      - { label: Thẻ, name: tags, widget: list, required: false }
+      - { label: Ảnh bìa, name: image, widget: image, required: false }
+      - { label: Nháp, name: draft, widget: boolean, default: false }
+      - { label: Nội dung, name: body, widget: markdown }
