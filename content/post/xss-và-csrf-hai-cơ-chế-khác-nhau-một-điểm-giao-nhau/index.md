@@ -8,7 +8,7 @@ tags:
   - XSS
   - CSRF
   - OWASP Top 10
-image: ''
+image: pasted-image-1791886303091.png
 draft: false
 ---
 
