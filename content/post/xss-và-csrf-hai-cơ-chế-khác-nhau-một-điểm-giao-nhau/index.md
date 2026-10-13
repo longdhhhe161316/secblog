@@ -12,26 +12,121 @@ image: ''
 draft: false
 ---
 
-\*\*Tóm tắt.\*\* Bài viết hệ thống hóa cơ chế của hai lỗ hổng web thường bị nhầm lẫn — Cross-Site Scripting (XSS) và Cross-Site Request Forgery (CSRF) — làm rõ căn cứ phân loại của OWASP cho từng loại, đối chiếu điểm khác biệt cốt lõi, và ghi nhận các nhầm lẫn phổ biến theo từng mức kinh nghiệm. Phần cuối trình bày điểm giao nhau giữa hai cơ chế: trường hợp XSS vô hiệu hóa biện pháp chống CSRF. 
-\## 1. Đặt vấn đề Nhiều tài liệu nhập môn trình bày XSS và CSRF bằng ví dụ minh họa gần giống nhau — một đoạn mã được chèn vào bình luận trên diễn đàn, nạn nhân mở trang và "dính" lỗi. Cách trình bày này dễ khiến người đọc đồng nhất hai lỗ hổng, trong khi chúng khác nhau ở cả vị trí lỗi lẫn cơ chế khai thác. Bài viết này tách rõ hai khái niệm, trước khi chỉ ra điểm mà chúng thực sự liên quan đến nhau. 
-\## 2. Cross-Site Scripting (XSS) 
-\### 2.1. Cơ chế XSS phát sinh khi ứng dụng đưa dữ liệu đầu vào không đáng tin cậy vào ngữ cảnh thực thi của HTML hoặc JavaScript mà không qua xử lý mã hóa (encoding) phù hợp. Hệ quả là trình duyệt diễn giải nhầm dữ liệu thành mã cần thực thi, thay vì nội dung cần hiển thị. 
-\### 2.2. Phân loại | Loại | Vị trí payload | Thời điểm thực thi | |---|---|---| | Reflected | Trong tham số của request | Server phản chiếu trực tiếp trong response | | Stored | Lưu trữ trên server (bình luận, hồ sơ, trường nhập liệu) | Mỗi lần dữ liệu được hiển thị cho người dùng khác | | DOM-based | Hoàn toàn phía client | JavaScript trong trang tự xử lý dữ liệu không an toàn, không qua server | 
-\### 2.3. Vị trí trong OWASP Top 10 XSS thuộc nhóm \*\*Injection\*\*: A03:2021 theo bản 2021, chuyển thành A05:2025 theo bản cập nhật gần nhất. Căn cứ phân loại là nguyên lý chung giữa các lỗi injection: ranh giới giữa dữ liệu và mã lệnh bị phá vỡ. Điểm khác biệt nằm ở phạm vi tác động — SQL injection ảnh hưởng server và cơ sở dữ liệu, còn XSS tác động đến phiên làm việc của người dùng trong trình duyệt. 
-\### 2.4. Điều kiện khai thác và các điểm hay bị hiểu sai Khai thác XSS yêu cầu ứng dụng không mã hóa đầu ra đúng ngữ cảnh. Việc đọc được cookie qua \`document.cookie\` cần thêm điều kiện: cookie không mang thuộc tính \`HttpOnly\`. Một nhận định phổ biến nhưng không chính xác là thuộc tính \`HttpOnly\` ngăn chặn hoàn toàn hậu quả của XSS. Trên thực tế, \`HttpOnly\` chỉ chặn việc \*\*đọc\*\* cookie bằng JavaScript; nó không ngăn script độc hại \*\*thực hiện hành động\*\* thay người dùng, vì trình duyệt vẫn tự động đính cookie vào mọi request mà script gửi đi — qua \`fetch\`, \`XMLHttpRequest\`, hay một form được submit bằng JavaScript. Một điểm hiểu sai khác là đồng nhất việc chèn nội dung hiển thị được với việc chèn mã chạy được. Một thẻ như \`<img src="...">\` xuất hiện trong nội dung do người dùng kiểm soát không cấu thành XSS, vì nó không phải mã thực thi — đây là ranh giới quan trọng được trình bày chi tiết ở mục 4. 
-\### 2.5. Biện pháp phòng ngừa | Biện pháp | Nguyên lý | |---|---| | Mã hóa đầu ra theo đúng ngữ cảnh | HTML, thuộc tính HTML, JavaScript và URL có quy tắc encode khác nhau | | Content Security Policy | Giới hạn nguồn script được phép thực thi, giảm thiểu tác động nếu lỗ hổng tồn tại | | \`HttpOnly\` và \`SameSite\` | Không ngăn XSS phát sinh, nhưng giới hạn hậu quả nếu bị khai thác | | Framework auto-escaping (React, Vue) | Giảm rủi ro mặc định; vẫn có điểm yếu nếu dùng các API như \`dangerouslySetInnerHTML\` hoặc \`v-html\` không cẩn trọng | [Liên hệ thực nghiệm: thử thách XSS đã thực hiện trên OWASP Juice Shop — loại nào, trường dữ liệu nào bị khai thác, điều chỉnh hướng tiếp cận ra sao nếu lần thử đầu không thành công.] 
-\## 3. Cross-Site Request Forgery (CSRF) 
-\### 3.1. Cơ chế CSRF phát sinh khi ứng dụng xử lý một hành động thay đổi trạng thái chỉ dựa vào cookie session được trình duyệt tự động gửi kèm, mà không xác minh request có thực sự xuất phát từ chính ứng dụng hay không. Quy trình điển hình: 1. Kẻ tấn công đặt một request nhắm tới ứng dụng đích trên một trang bất kỳ — có thể dưới dạng thẻ \`<img>\` (cho GET) hoặc một form tự động submit (cho POST). 2. Nạn nhân, đang trong phiên đăng nhập hợp lệ tại ứng dụng đích, mở trang chứa request đó. 3. Trình duyệt tự động gửi request kèm cookie session, vì cookie được gắn theo domain đích, không phụ thuộc vào nơi request được khởi tạo. 4. Ứng dụng đích không kiểm tra nguồn gốc request, thực hiện hành động như thể chính nạn nhân yêu cầu. 
-\### 3.2. Vị trí trong OWASP Top 10 CSRF được gộp vào \*\*A01 — Broken Access Control\*\* từ bản 2021, không còn là mục riêng như ở bản 2017. Căn cứ: về bản chất, CSRF là một dạng lỗi kiểm soát truy cập — ứng dụng thực hiện hành động mà không xác minh đúng cách request đó có được ủy quyền hợp lệ hay không. 
-\### 3.3. Điều kiện khai thác - Ứng dụng đích không triển khai CSRF token hoặc không kiểm tra header \`Origin\`/\`Referer\`. - Cookie session không có thuộc tính \`SameSite=Strict\` (hoặc \`Lax\` kết hợp với điều kiện cho phép). - Nạn nhân còn phiên đăng nhập hợp lệ tại thời điểm mở trang chứa request giả mạo. 
-\### 3.4. Biện pháp phòng ngừa | Biện pháp | Vị trí triển khai | |---|---| | CSRF token (đồng bộ token theo mỗi phiên hoặc mỗi form) | Server | | Kiểm tra header \`Origin\` / \`Referer\` | Server | | Thuộc tính \`SameSite\` cho cookie | Cấu hình cookie | | Thiết kế hành động thay đổi trạng thái dùng POST/PUT/DELETE, tránh GET | Thiết kế API | [Liên hệ thực nghiệm: thử thách CSRF trên Juice Shop, nếu đã thực hiện.] 
-\## 4. Đối chiếu | | XSS | CSRF | |---|---|---| | Vị trí lỗi | Nơi hiển thị nội dung — không encode output | Nơi xử lý hành động — không xác minh nguồn request | | Cơ chế khai thác | Chèn mã chạy được (script) | Khiến trình duyệt tự gửi request, không cần script | | \`HttpOnly\` có liên quan | Có — chặn đọc cookie, không chặn hành động | Không — không cần đọc cookie | | \`SameSite\` có liên quan | Không trực tiếp | Có — là lớp phòng thủ chính | | Ví dụ minh họa dễ gây nhầm lẫn | \`<script>...</script>\` trong một trường nội dung do người dùng kiểm soát | \`<img src="...">\` trong cùng trường nội dung đó | Sự tương đồng về ví dụ minh họa — cùng là một đoạn mã HTML chèn vào bình luận — là nguyên nhân chính dẫn đến nhầm lẫn giữa hai lỗ hổng, dù cơ chế phía sau khác nhau hoàn toàn: một thẻ \`<img>\` không chạy mã, nó chỉ khiến trình duyệt thực hiện một hành vi mặc định của giao thức HTTP; một đoạn script thực thi là mã lệnh trong ngữ cảnh của trang. 
-\## 5. Nhầm lẫn thường gặp theo trình độ 
-\### 5.1. Người mới tiếp cận - Đồng nhất hai lỗ hổng vì cùng khai thác điều kiện nạn nhân đang đăng nhập, bỏ qua khác biệt về vị trí lỗi. - Đồng nhất "chèn được nội dung hiển thị" với "chèn được mã thực thi" — như trường hợp thẻ \`<img>\` đã phân tích ở mục 4. - Nhầm lẫn tên viết tắt: CSRF và XSRF là cùng một khái niệm (tên gọi khác nhau), nhưng SSRF (Server-Side Request Forgery) là một lỗ hổng hoàn toàn khác — liên quan đến server tự gửi request, không liên quan đến trình duyệt của nạn nhân. ### 5.2. Người có kinh nghiệm - Giả định \`SameSite\` cookie đã đủ để loại trừ CSRF, bỏ qua CSRF token — trong khi vẫn tồn tại một số trường hợp ngoại lệ (điều hướng cấp cao nhất, một số kiểu request GET) mà \`SameSite\` một mình không bao phủ hết. - Đánh giá mức độ nghiêm trọng không nhất quán khi lập báo cáo: cùng một cơ chế CSRF, tác động trên một hành động không nhạy cảm (đổi giao diện hiển thị) khác xa về mức độ rủi ro so với tác động trên một hành động nhạy cảm (đổi địa chỉ email khôi phục, xóa tài khoản). 
-\## 6. Điểm giao nhau: XSS vô hiệu hóa biện pháp chống CSRF Dù khác nhau về cơ chế, hai lỗ hổng không hoàn toàn độc lập trong thực tế. Nếu một ứng dụng tồn tại lỗ hổng XSS, kẻ tấn công có khả năng dùng script để \*\*đọc trực tiếp giá trị CSRF token hợp lệ\*\* từ trang (vì script chạy trong cùng ngữ cảnh với trang, có quyền truy cập DOM), sau đó gắn token này vào một request giả mạo. Hệ quả: CSRF token — vốn được xem là biện pháp phòng ngừa chuẩn cho CSRF — không còn là lớp phòng thủ độc lập nếu ứng dụng còn tồn tại XSS. Đây là lý do phòng thủ theo chiều sâu (defense in depth) được khuyến nghị thay vì phụ thuộc vào một biện pháp duy nhất. 
-\## 7. Kết luận [2–3 câu tổng kết dựa trên trải nghiệm thực nghiệm cá nhân, không lặp lại nội dung đã trình bày. Có thể nêu hướng tiếp theo của loạt bài — ví dụ nhóm Injection còn lại (SQL injection, Command injection) hoặc nhóm Broken Access Control nói chung.] 
-\## Tài liệu tham khảo 
-1\. OWASP Top 10: https://owasp.org/Top10/ 
-2\. OWASP Cheat Sheet Series — Cross Site Scripting Prevention: https://cheatsheetseries.owasp.org/ 
-3\. OWASP Cheat Sheet Series — Cross-Site Request Forgery Prevention: https://cheatsheetseries.owasp.org/ 
-4\. OWASP Juice Shop: https://owasp.org/www-project-juice-shop/
+> **Tóm tắt.** Bài viết hệ thống hóa cơ chế của hai lỗ hổng web thường bị nhầm lẫn — Cross-Site Scripting (XSS) và Cross-Site Request Forgery (CSRF) — làm rõ căn cứ phân loại của OWASP cho từng loại, đối chiếu điểm khác biệt cốt lõi, và ghi nhận các nhầm lẫn phổ biến theo từng mức kinh nghiệm. Phần cuối trình bày điểm giao nhau giữa hai cơ chế: trường hợp XSS vô hiệu hóa biện pháp chống CSRF.
+
+## 1. Đặt vấn đề
+
+Nhiều tài liệu nhập môn trình bày XSS và CSRF bằng ví dụ minh họa gần giống nhau — một đoạn mã được chèn vào bình luận trên diễn đàn, nạn nhân mở trang và "dính" lỗi. Cách trình bày này dễ khiến người đọc đồng nhất hai lỗ hổng, trong khi chúng khác nhau ở cả vị trí lỗi lẫn cơ chế khai thác. Bài viết này tách rõ hai khái niệm, trước khi chỉ ra điểm mà chúng thực sự liên quan đến nhau.
+
+## 2. Cross-Site Scripting (XSS)
+
+### 2.1. Cơ chế
+
+XSS phát sinh khi ứng dụng đưa dữ liệu đầu vào không đáng tin cậy vào ngữ cảnh thực thi của HTML hoặc JavaScript mà không qua xử lý mã hóa (encoding) phù hợp. Hệ quả là trình duyệt diễn giải nhầm dữ liệu thành mã cần thực thi, thay vì nội dung cần hiển thị.
+
+### 2.2. Phân loại
+
+| Loại | Vị trí payload | Thời điểm thực thi |
+|---|---|---|
+| Reflected | Trong tham số của request | Server phản chiếu trực tiếp trong response |
+| Stored | Lưu trữ trên server (bình luận, hồ sơ, trường nhập liệu) | Mỗi lần dữ liệu được hiển thị cho người dùng khác |
+| DOM-based | Hoàn toàn phía client | JavaScript trong trang tự xử lý dữ liệu không an toàn, không qua server |
+
+### 2.3. Vị trí trong OWASP Top 10
+
+XSS thuộc nhóm **Injection**: A03:2021 theo bản 2021, chuyển thành A05:2025 theo bản cập nhật gần nhất. Căn cứ phân loại là nguyên lý chung giữa các lỗi injection: ranh giới giữa dữ liệu và mã lệnh bị phá vỡ. Điểm khác biệt nằm ở phạm vi tác động — SQL injection ảnh hưởng server và cơ sở dữ liệu, còn XSS tác động đến phiên làm việc của người dùng trong trình duyệt.
+
+### 2.4. Điều kiện khai thác và các điểm hay bị hiểu sai
+
+Khai thác XSS yêu cầu ứng dụng không mã hóa đầu ra đúng ngữ cảnh. Việc đọc được cookie qua `document.cookie` cần thêm điều kiện: cookie không mang thuộc tính `HttpOnly`.
+
+Một nhận định phổ biến nhưng không chính xác là thuộc tính `HttpOnly` ngăn chặn hoàn toàn hậu quả của XSS. Trên thực tế, `HttpOnly` chỉ chặn việc **đọc** cookie bằng JavaScript; nó không ngăn script độc hại **thực hiện hành động** thay người dùng, vì trình duyệt vẫn tự động đính cookie vào mọi request mà script gửi đi — qua `fetch`, `XMLHttpRequest`, hay một form được submit bằng JavaScript.
+
+Một điểm hiểu sai khác là đồng nhất việc chèn nội dung hiển thị được với việc chèn mã chạy được. Một thẻ như `<img src="...">` xuất hiện trong nội dung do người dùng kiểm soát không cấu thành XSS, vì nó không phải mã thực thi — đây là ranh giới quan trọng được trình bày chi tiết ở mục 4.
+
+### 2.5. Biện pháp phòng ngừa
+
+| Biện pháp | Nguyên lý |
+|---|---|
+| Mã hóa đầu ra theo đúng ngữ cảnh | HTML, thuộc tính HTML, JavaScript và URL có quy tắc encode khác nhau |
+| Content Security Policy | Giới hạn nguồn script được phép thực thi, giảm thiểu tác động nếu lỗ hổng tồn tại |
+| `HttpOnly` và `SameSite` | Không ngăn XSS phát sinh, nhưng giới hạn hậu quả nếu bị khai thác |
+| Framework auto-escaping (React, Vue) | Giảm rủi ro mặc định; vẫn có điểm yếu nếu dùng các API như `dangerouslySetInnerHTML` hoặc `v-html` không cẩn trọng |
+
+[Liên hệ thực nghiệm: thử thách XSS đã thực hiện trên OWASP Juice Shop — loại nào, trường dữ liệu nào bị khai thác, điều chỉnh hướng tiếp cận ra sao nếu lần thử đầu không thành công.]
+
+## 3. Cross-Site Request Forgery (CSRF)
+
+### 3.1. Cơ chế
+
+CSRF phát sinh khi ứng dụng xử lý một hành động thay đổi trạng thái chỉ dựa vào cookie session được trình duyệt tự động gửi kèm, mà không xác minh request có thực sự xuất phát từ chính ứng dụng hay không.
+
+Quy trình điển hình:
+
+1. Kẻ tấn công đặt một request nhắm tới ứng dụng đích trên một trang bất kỳ — có thể dưới dạng thẻ `<img>` (cho GET) hoặc một form tự động submit (cho POST).
+2. Nạn nhân, đang trong phiên đăng nhập hợp lệ tại ứng dụng đích, mở trang chứa request đó.
+3. Trình duyệt tự động gửi request kèm cookie session, vì cookie được gắn theo domain đích, không phụ thuộc vào nơi request được khởi tạo.
+4. Ứng dụng đích không kiểm tra nguồn gốc request, thực hiện hành động như thể chính nạn nhân yêu cầu.
+
+### 3.2. Vị trí trong OWASP Top 10
+
+CSRF được gộp vào **A01 — Broken Access Control** từ bản 2021, không còn là mục riêng như ở bản 2017. Căn cứ: về bản chất, CSRF là một dạng lỗi kiểm soát truy cập — ứng dụng thực hiện hành động mà không xác minh đúng cách request đó có được ủy quyền hợp lệ hay không.
+
+### 3.3. Điều kiện khai thác
+
+- Ứng dụng đích không triển khai CSRF token hoặc không kiểm tra header `Origin`/`Referer`.
+- Cookie session không có thuộc tính `SameSite=Strict` (hoặc `Lax` kết hợp với điều kiện cho phép).
+- Nạn nhân còn phiên đăng nhập hợp lệ tại thời điểm mở trang chứa request giả mạo.
+
+### 3.4. Biện pháp phòng ngừa
+
+| Biện pháp | Vị trí triển khai |
+|---|---|
+| CSRF token (đồng bộ token theo mỗi phiên hoặc mỗi form) | Server |
+| Kiểm tra header `Origin` / `Referer` | Server |
+| Thuộc tính `SameSite` cho cookie | Cấu hình cookie |
+| Thiết kế hành động thay đổi trạng thái dùng POST/PUT/DELETE, tránh GET | Thiết kế API |
+
+[Liên hệ thực nghiệm: thử thách CSRF trên Juice Shop, nếu đã thực hiện.]
+
+## 4. Đối chiếu
+
+| | XSS | CSRF |
+|---|---|---|
+| Vị trí lỗi | Nơi hiển thị nội dung — không encode output | Nơi xử lý hành động — không xác minh nguồn request |
+| Cơ chế khai thác | Chèn mã chạy được (script) | Khiến trình duyệt tự gửi request, không cần script |
+| `HttpOnly` có liên quan | Có — chặn đọc cookie, không chặn hành động | Không — không cần đọc cookie |
+| `SameSite` có liên quan | Không trực tiếp | Có — là lớp phòng thủ chính |
+| Ví dụ minh họa dễ gây nhầm lẫn | `<script>...</script>` trong một trường nội dung do người dùng kiểm soát | `<img src="...">` trong cùng trường nội dung đó |
+
+Sự tương đồng về ví dụ minh họa — cùng là một đoạn mã HTML chèn vào bình luận — là nguyên nhân chính dẫn đến nhầm lẫn giữa hai lỗ hổng, dù cơ chế phía sau khác nhau hoàn toàn: một thẻ `<img>` không chạy mã, nó chỉ khiến trình duyệt thực hiện một hành vi mặc định của giao thức HTTP; một đoạn script thực thi là mã lệnh trong ngữ cảnh của trang.
+
+## 5. Nhầm lẫn thường gặp theo trình độ
+
+### 5.1. Người mới tiếp cận
+
+- Đồng nhất hai lỗ hổng vì cùng khai thác điều kiện nạn nhân đang đăng nhập, bỏ qua khác biệt về vị trí lỗi.
+- Đồng nhất "chèn được nội dung hiển thị" với "chèn được mã thực thi" — như trường hợp thẻ `<img>` đã phân tích ở mục 4.
+- Nhầm lẫn tên viết tắt: CSRF và XSRF là cùng một khái niệm (tên gọi khác nhau), nhưng SSRF (Server-Side Request Forgery) là một lỗ hổng hoàn toàn khác — liên quan đến server tự gửi request, không liên quan đến trình duyệt của nạn nhân.
+
+### 5.2. Người có kinh nghiệm
+
+- Giả định `SameSite` cookie đã đủ để loại trừ CSRF, bỏ qua CSRF token — trong khi vẫn tồn tại một số trường hợp ngoại lệ (điều hướng cấp cao nhất, một số kiểu request GET) mà `SameSite` một mình không bao phủ hết.
+- Đánh giá mức độ nghiêm trọng không nhất quán khi lập báo cáo: cùng một cơ chế CSRF, tác động trên một hành động không nhạy cảm (đổi giao diện hiển thị) khác xa về mức độ rủi ro so với tác động trên một hành động nhạy cảm (đổi địa chỉ email khôi phục, xóa tài khoản).
+
+## 6. Điểm giao nhau: XSS vô hiệu hóa biện pháp chống CSRF
+
+Dù khác nhau về cơ chế, hai lỗ hổng không hoàn toàn độc lập trong thực tế. Nếu một ứng dụng tồn tại lỗ hổng XSS, kẻ tấn công có khả năng dùng script để **đọc trực tiếp giá trị CSRF token hợp lệ** từ trang (vì script chạy trong cùng ngữ cảnh với trang, có quyền truy cập DOM), sau đó gắn token này vào một request giả mạo.
+
+Hệ quả: CSRF token — vốn được xem là biện pháp phòng ngừa chuẩn cho CSRF — không còn là lớp phòng thủ độc lập nếu ứng dụng còn tồn tại XSS. Đây là lý do phòng thủ theo chiều sâu (defense in depth) được khuyến nghị thay vì phụ thuộc vào một biện pháp duy nhất.
+
+## 7. Kết luận
+
+[2–3 câu tổng kết dựa trên trải nghiệm thực nghiệm cá nhân, không lặp lại nội dung đã trình bày. Có thể nêu hướng tiếp theo của loạt bài — ví dụ nhóm Injection còn lại (SQL injection, Command injection) hoặc nhóm Broken Access Control nói chung.]
+
+## Tài liệu tham khảo
+
+1. OWASP Top 10: https://owasp.org/Top10/
+2. OWASP Cheat Sheet Series — Cross Site Scripting Prevention: https://cheatsheetseries.owasp.org/
+3. OWASP Cheat Sheet Series — Cross-Site Request Forgery Prevention: https://cheatsheetseries.owasp.org/
+4. OWASP Juice Shop: https://owasp.org/www-project-juice-shop/
