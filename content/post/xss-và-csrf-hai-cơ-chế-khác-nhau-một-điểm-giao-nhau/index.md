@@ -12,7 +12,7 @@ image: ''
 draft: false
 ---
 
-\> \*\*Tóm tắt.\*\* Bài viết hệ thống hóa cơ chế của hai lỗ hổng web thường bị nhầm lẫn — Cross-Site Scripting (XSS) và Cross-Site Request Forgery (CSRF) — làm rõ căn cứ phân loại của OWASP cho từng loại, đối chiếu điểm khác biệt cốt lõi, và ghi nhận các nhầm lẫn phổ biến theo từng mức kinh nghiệm. Phần cuối trình bày điểm giao nhau giữa hai cơ chế: trường hợp XSS vô hiệu hóa biện pháp chống CSRF. 
+\*\*Tóm tắt.\*\* Bài viết hệ thống hóa cơ chế của hai lỗ hổng web thường bị nhầm lẫn — Cross-Site Scripting (XSS) và Cross-Site Request Forgery (CSRF) — làm rõ căn cứ phân loại của OWASP cho từng loại, đối chiếu điểm khác biệt cốt lõi, và ghi nhận các nhầm lẫn phổ biến theo từng mức kinh nghiệm. Phần cuối trình bày điểm giao nhau giữa hai cơ chế: trường hợp XSS vô hiệu hóa biện pháp chống CSRF. 
 \## 1. Đặt vấn đề Nhiều tài liệu nhập môn trình bày XSS và CSRF bằng ví dụ minh họa gần giống nhau — một đoạn mã được chèn vào bình luận trên diễn đàn, nạn nhân mở trang và "dính" lỗi. Cách trình bày này dễ khiến người đọc đồng nhất hai lỗ hổng, trong khi chúng khác nhau ở cả vị trí lỗi lẫn cơ chế khai thác. Bài viết này tách rõ hai khái niệm, trước khi chỉ ra điểm mà chúng thực sự liên quan đến nhau. 
 \## 2. Cross-Site Scripting (XSS) 
 \### 2.1. Cơ chế XSS phát sinh khi ứng dụng đưa dữ liệu đầu vào không đáng tin cậy vào ngữ cảnh thực thi của HTML hoặc JavaScript mà không qua xử lý mã hóa (encoding) phù hợp. Hệ quả là trình duyệt diễn giải nhầm dữ liệu thành mã cần thực thi, thay vì nội dung cần hiển thị. 
