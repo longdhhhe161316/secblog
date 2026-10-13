@@ -24,4 +24,4 @@ collections:
       - { label: Thẻ, name: tags, widget: list, required: false }
       - { label: Ảnh bìa, name: image, widget: image, required: false }
       - { label: Nháp, name: draft, widget: boolean, default: false }
-      - { label: Nội dung, name: body, widget: markdown }
+      - { label: Nội dung, name: body, widget: text }
