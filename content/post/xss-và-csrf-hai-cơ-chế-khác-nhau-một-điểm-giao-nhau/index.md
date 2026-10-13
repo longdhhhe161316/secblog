@@ -1,7 +1,7 @@
 ---
 title: 'XSS và CSRF: hai cơ chế khác nhau, một điểm giao nhau'
 description: 'Ghi chú hệ thống về Cross-Site Scripting và Cross-Site Request Forgery: cơ chế, phân loại OWASP, các nhầm lẫn phổ biến theo trình độ, và điểm hai lỗ hổng này giao nhau.'
-date: 2026-10-13T15:07:00
+date: 2026-10-12T15:07:00
 categories:
   - OWASP
 tags:
