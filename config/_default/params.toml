@@ -10,7 +10,7 @@ favicon        = "img/favicon.ico"
 SortBy              = "default"
 
 [footer]
-    since      = 2020
+    since      = 2026
     customText = ""
 
 [dateFormat]
@@ -19,7 +19,7 @@ SortBy              = "default"
 
 [sidebar]
     emoji    = "🍥"
-    subtitle = "Notes on web security: understand it, then build the lab"
+    subtitle = "Notes on web security"
     avatar   = "img/avatarsecblog.jfif"
 
 [article]
